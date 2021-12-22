@@ -95,8 +95,7 @@ expDes$group <- with(expDes, interaction(treatment, timepoint))
 
 
 # Load counts into DGEList object from edgeR package.
-x <- DGEList(counts = txi$counts, 
-             group = expDes$group)
+x <- DGEList(counts = txi$counts, group = expDes$group)
 
 dim(x)
 # [1] 47338    30
@@ -123,6 +122,25 @@ y <- calcNormFactors(y)
 # MJ treatment on specific timepoint
 modMat <- model.matrix(~treatment * timepoint, expDes)
 
+colnames(modMat)[1] <- "Intercept"
+
+colnames(modMat) <- colnames(modMat) %>% str_replace(":", "_")
+
+
+# Inspecting the differential expression from treatment at 
+# different time-point without the compounding effect
+contrasts <-
+  makeContrasts(
+    MJT1vsTWT1 = treatmentMJ,
+    # The effect of MJ treatment at T2 without the time effect
+    MJT2vsTWT2 = treatmentMJ + treatmentMJ_timepoint2,
+    # The effect of MJ treatment at T3 without the time effect
+    MJT3vsTWT3 = treatmentMJ + treatmentMJ_timepoint3,
+    # The effect of MJ treatment at T4 without the time effect
+    MJT4vsTWT4 = treatmentMJ + treatmentMJ_timepoint4,
+    # The effect of MJ treatment at T5 without the time effect
+    MJT5vsTWT5 = treatmentMJ + treatmentMJ_timepoint5,
+    levels = modMat)
 
 # voom transformation
 v <- voom(y, modMat, plot = TRUE)
@@ -131,10 +149,9 @@ v <- voom(y, modMat, plot = TRUE)
 v.cpm <- v$E
 
 # Write voom transformed expression matrix
-write.table(
-  v.cpm,
-  "results/cpm.txt",
-  row.names = TRUE, col.names = TRUE, sep = "\t", quote = FALSE)
+# write.table(
+#   v.cpm, "results/cpm.txt",
+#   row.names = TRUE, col.names = TRUE, sep = "\t", quote = FALSE)
 
 # Create PCA plot
 # p <- PCA_maker(v.cpm,
@@ -146,46 +163,54 @@ write.table(
 # Linear modeling
 fit <- lmFit(v, modMat)
 
-fit2 <- eBayes(fit)
+fit2 <- contrasts.fit(fit, contrasts)
+
+fit3 <- eBayes(fit2)
 
 # Up-regulation = higher expression in gland in reference to glandes
 summary(
-  decideTests(fit2, method = "separate",
+  decideTests(fit3, method = "separate",
               adjust.method = "fdr", p.value = pCutoff, 
               lfc = lfcCutoff))
-
-#        MJ.T1_TW.T1 MJ.T2_TW.T2 MJ.T3_TW.T3 MJ.T4_TW.T4 MJ.T5_TW.T5
-# Down           278        1039        2008        1584        1657
-# NotSig       29346       28151       26805       27349       27020
-# Up             505         939        1316        1196        1452
-
-# results <-
-#   topTable(fit2, coef = "gland", 
-#            sort.by = "logFC", number = Inf)
-
-# str(results)
+#        MJT1vsTWT1 MJT2vsTWT2 MJT3vsTWT3 MJT4vsTWT4 MJT5vsTWT5
+# Down          278       1018       1749       1530       1309
+# NotSig      29346      27738      26568      26869      27209
+# Up            505       1373       1812       1730       1611
 
 
-# Reorganize columns
-# results <- results %>% 
-#   select(logFC, adj.P.Val) %>%
-#   rownames_to_column("cds")
+# Get the results with topTable for each coef
+rslt <- map_dfr(colnames(contrasts), function(x) {
+  df <- topTable(fit3, coef = x, number = Inf, sort.by = "none")
+  df <- df %>% rownames_to_column("cds")
+  df <- df %>% select(cds, logFC, adj.P.Val)
+  df <- df %>% add_column("focus" = x)
+})
 
+table(rslt$focus)
+# MJT1vsTWT1 MJT2vsTWT2 MJT3vsTWT3 MJT4vsTWT4 MJT5vsTWT5 
+#      30129      30129      30129      30129      30129 
 
-### Write out stats of all contigs
-# write.table(
-#   results, quote = FALSE, sep = "\t", 
-#   row.names = FALSE, col.names = TRUE,
-#   "results/dea_all_stats.txt"
-# )
+# Write out stats of all contigs
+write.table(
+  rslt, quote = FALSE, sep = "\t",
+  row.names = FALSE, col.names = TRUE,
+  "results/dea_all_stats.txt"
+)
 
-### Write out all sig DE stats
-# sigDE <- results %>% 
-#   filter(adj.P.Val <= pCutoff & abs(logFC) >= lfcCutoff)
-# 
-# write.table(
-#   sigDE, quote = FALSE, sep = "\t", 
-#   row.names = FALSE, col.names = TRUE,
-#   "results/dea_sigDE_stats.txt"
-# )
-# 
+# Write out all sig DE stats
+sigDE <- rslt %>%
+  filter(adj.P.Val <= pCutoff & abs(logFC) >= lfcCutoff)
+
+str(sigDE)
+# 'data.frame':	12915 obs. of  4 variables:
+
+length(unique(sigDE$cds))
+# [1] 6962
+
+write.table(
+  sigDE, quote = FALSE, sep = "\t",
+  row.names = FALSE, col.names = TRUE,
+  "results/dea_sigDE_stats.txt"
+)
+
+write(unique(sigDE$cds), "results/sigDE_cdsID.txt")
