@@ -10,13 +10,19 @@ PCA_maker <- function(cpm, groupings) {
   pc <- as.data.frame(pca$x)
   
   g <- guide_legend("Genotype")
-  
-  p <-
-    ggplot(
-      data = pc,
-      aes_string(x = "PC1", y = "PC2", shape = factor(groupings))) +
-    geom_point(size = 4) +
+
+
+  # ggplot(
+  #   data = pc,
+  #   aes_string(x = "PC1", y = "PC2", shape = factor(groupings))) +
+  #   geom_point(size = 4) +
+  #   
     
+  # p <-
+  ggplot(pc, aes(x = "PC1", y = "PC2")) +
+    geom_point(shape = factor(groupings), size = 1) +
+    scale_shape_identity() +
+
     # Naming title and axis
     ggtitle("Principal Component Analysis") + 
     xlab(paste("PC1 (", pca_summary$importance["Proportion of Variance", "PC1"]*100, "%)")) +

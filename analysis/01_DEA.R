@@ -6,7 +6,7 @@ library(tibble)
 library(tximport)
 
 
-source("analysis/99_helper01_PCA-maker.R")
+source("analysis/helper01_PCA-maker.R")
 
 
 ### Differential Expression Analysis on tween (control) and methyl-jasmonate
@@ -25,7 +25,7 @@ pCutoff <- 0.05
 
 # Import file with tximport
 quant.files <-
-  dir("data",
+  dir("data/Salmon",
       pattern = "quant.sf",
       full.names = TRUE,
       recursive = TRUE,
@@ -119,46 +119,9 @@ y$samples$lib.size <- colSums(y$counts)
 y <- calcNormFactors(y)
 
 
-# make model matrix
-# Nested design model matrix
-modMat <- model.matrix(~treatment + treatment:timepoint, expDes)
-
-colnames(modMat) <- colnames(modMat) %>% 
-  str_replace(":", "_") %>% 
-  str_replace("treatment", "") %>% 
-  str_replace("timepoint", "T")
-
-#    (Intercept) MJ TW_T2 MJ_T2 TW_T3 MJ_T3 TW_T4 MJ_T4 TW_T5 MJ_T5
-# 1            1  1     0     0     0     0     0     0     0     0
-# 2            1  1     0     0     0     0     0     0     0     0
-# 3            1  1     0     0     0     0     0     0     0     0
-# 4            1  1     0     1     0     0     0     0     0     0
-# 5            1  1     0     1     0     0     0     0     0     0
-# 6            1  1     0     1     0     0     0     0     0     0
-# 7            1  1     0     0     0     1     0     0     0     0
-# 8            1  1     0     0     0     1     0     0     0     0
-# 9            1  1     0     0     0     1     0     0     0     0
-# 10           1  1     0     0     0     0     0     1     0     0
-# 11           1  1     0     0     0     0     0     1     0     0
-# 12           1  1     0     0     0     0     0     1     0     0
-# 13           1  1     0     0     0     0     0     0     0     1
-# 14           1  1     0     0     0     0     0     0     0     1
-# 15           1  1     0     0     0     0     0     0     0     1
-# 16           1  0     0     0     0     0     0     0     0     0
-# 17           1  0     0     0     0     0     0     0     0     0
-# 18           1  0     0     0     0     0     0     0     0     0
-# 19           1  0     1     0     0     0     0     0     0     0
-# 20           1  0     1     0     0     0     0     0     0     0
-# 21           1  0     1     0     0     0     0     0     0     0
-# 22           1  0     0     0     1     0     0     0     0     0
-# 23           1  0     0     0     1     0     0     0     0     0
-# 24           1  0     0     0     1     0     0     0     0     0
-# 25           1  0     0     0     0     0     1     0     0     0
-# 26           1  0     0     0     0     0     1     0     0     0
-# 27           1  0     0     0     0     0     1     0     0     0
-# 28           1  0     0     0     0     0     0     0     1     0
-# 29           1  0     0     0     0     0     0     0     1     0
-# 30           1  0     0     0     0     0     0     0     1     0
+# With nested design model matrix, we can test the effect of 
+# MJ treatment on specific timepoint
+modMat <- model.matrix(~treatment * timepoint, expDes)
 
 
 # voom transformation
@@ -174,7 +137,7 @@ write.table(
   row.names = TRUE, col.names = TRUE, sep = "\t", quote = FALSE)
 
 # Create PCA plot
-# p <- PCA_maker(v.cpm, 
+# p <- PCA_maker(v.cpm,
 #                colnames(v.cpm) %>% str_replace("_rep\\d", ""))
 
 # ggsave("results/figures/PCA.jpg", plot = p, dpi = "retina")
@@ -183,22 +146,11 @@ write.table(
 # Linear modeling
 fit <- lmFit(v, modMat)
 
-cont_matrix <-
-  makeContrasts(
-    MJ.T1_TW.T1 = MJ,
-    MJ.T2_TW.T2 = MJ_T2 - TW_T2,
-    MJ.T3_TW.T3 = MJ_T3 - TW_T3,
-    MJ.T4_TW.T4 = MJ_T4 - TW_T4,
-    MJ.T5_TW.T5 = MJ_T5 - TW_T5,
-    levels = modMat)
-
-fit2 <- contrasts.fit(fit, cont_matrix)
-
-fit3 <- eBayes(fit2)
+fit2 <- eBayes(fit)
 
 # Up-regulation = higher expression in gland in reference to glandes
 summary(
-  decideTests(fit3, method = "separate", 
+  decideTests(fit2, method = "separate",
               adjust.method = "fdr", p.value = pCutoff, 
               lfc = lfcCutoff))
 
