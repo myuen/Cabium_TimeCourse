@@ -117,6 +117,10 @@ y$samples$lib.size <- colSums(y$counts)
 # TMM Normalization by Depth
 y <- calcNormFactors(y)
 
+write.table(
+  cpm(y), "results/tmm_normalized.cpm.txt",
+  row.names = TRUE, col.names = TRUE, sep = "\t", quote = FALSE)
+
 
 # With nested design model matrix, we can test the effect of 
 # MJ treatment on specific timepoint
