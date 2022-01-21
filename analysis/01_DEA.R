@@ -158,8 +158,8 @@ v.cpm <- v$E
 #   row.names = TRUE, col.names = TRUE, sep = "\t", quote = FALSE)
 
 # Create PCA plot
-# p <- PCA_maker(v.cpm,
-#                colnames(v.cpm) %>% str_replace("_rep\\d", ""))
+p <- PCA_maker(v.cpm,
+               colnames(v.cpm) %>% str_replace("_rep\\d", ""))
 
 # ggsave("results/figures/PCA.jpg", plot = p, dpi = "retina")
 
