@@ -5,8 +5,9 @@ library(stringr)
 library(tibble)
 library(tidyselect)
 
+
+# Read normalized CPM
 cpm <- read.table("results/tmm_normalized.cpm.txt")
-# cpm <- read.table("~/TPM_Pg653_Cambium_TRD_4april2017_nr.txt")
 
 
 # Function to calculate row variance
@@ -37,30 +38,11 @@ cpm.stats <-
   )
 
 
-# cpm.stats <-
-#   cpm %>% transmute(
-#     "MJ.T1" = rowMeans(select(cpm, starts_with("M") & ends_with("2H"))),
-#     "MJ.T2" = rowMeans(select(cpm, starts_with("M") & ends_with("1D"))),
-#     "MJ.T3" = rowMeans(select(cpm, starts_with("M") & ends_with("2D"))),
-#     "MJ.T4" = rowMeans(select(cpm, starts_with("M") & ends_with("4D"))),
-#     "MJ.T5" = rowMeans(select(cpm, starts_with("M") & ends_with("8D"))),
-# 
-#     "TW.T1" = rowMeans(select(cpm, starts_with("T") & ends_with("2H"))),
-#     "TW.T2" = rowMeans(select(cpm, starts_with("T") & ends_with("1D"))),
-#     "TW.T3" = rowMeans(select(cpm, starts_with("T") & ends_with("2D"))),
-#     "TW.T4" = rowMeans(select(cpm, starts_with("T") & ends_with("4D"))),
-#     "TW.T5" = rowMeans(select(cpm, starts_with("T") & ends_with("8D"))),
-# 
-#     "MJ.mean" = rowMeans(select(cpm, starts_with("M"))),
-#     "TW.mean" = rowMeans(select(cpm, starts_with("T"))),
-# 
-#     "MJ.var" = rowVar(select(cpm, starts_with("M"))),
-#     "T.var" = rowVar(select(cpm, starts_with("T")))
-#     )
-
+# Read statistics for differential expression sequences
 sigDE <- read.table("results/dea_sigDE_stats.txt",
                     header = TRUE,
                     stringsAsFactors = FALSE)
+
 str(sigDE)
 # 'data.frame':	12915 obs. of  4 variables:
 
@@ -79,12 +61,13 @@ sigDE.stats <- rbind(time, sigDE.stats)
 
 rownames(sigDE.stats)[1] <- "time"
 
-tmp <- tempfile()
 
-write.table(sigDE.stats, file = tmp, sep = '\t', quote = F, col.names = NA)
+# table2eset function must read from a file
+write.table(sigDE.stats, file = "results/sigDE.stats.tbl.txt", 
+            sep = '\t', quote = F, col.names = NA)
 
 
-data <- table2eset(tmp)
+data <- table2eset("results/sigDE.stats.tbl.txt")
 
 data.s <- standardise(data)
 
@@ -93,8 +76,8 @@ data.s <- standardise(data)
 
 pdf("results/dmin.pdf", width = 20, height = 10)
 
-Dmin(data.s, m = m1, crange = seq(2, 10, 1), repeats = 5, visu = TRUE)
-# [1] 2.2943111 2.3378242 2.0339296 1.1629987 1.0699039 1.0504531 0.9690144 0.7886414 0.6316527
+tmp <- Dmin(data.s, m = m1, crange = seq(2, 10, 1), repeats = 5, visu = TRUE)
+# [1] 2.2943019 2.3378306 2.0339792 1.0750610 1.1141968 1.0213772 0.9464997 0.8278212 0.7318490
 
 dev.off()
 
@@ -103,31 +86,28 @@ clust <- 5
 
 c <- mfuzz(data.s, c = clust, m = m1)
 
-# mfuzz.plot(
-#   data.s,
-#   cl = c,
-#   mfrow = c(2, 4),
-#   time.labels = c(2, 24, 48, 96, 192),
-#   new.window = FALSE
-# )
-
-
 pdf("results/five-clusters-for-dea.pdf", width = 20, height = 10)
 
-mfuzz.plot2(data.s, cl = c, mfrow = c(2, 4), colo = "fancy",
+mfuzz.plot2(data.s, cl = c, mfrow = c(2, 3), colo = "fancy",
             time.labels = c(2, 24, 48, 96, 192),
-            xlab = "Time Point (hrs)",
+            xlab = "Time (hrs)",
+            ylab = expression("Log"[2]*'FC'),
             centre = TRUE, 
+            # Increase font size of title
+            cex.main = 1.2,
+            # Increase font size of tick point
+            cex.axis = 1.1,
+            # Increase font size of axis lable
+            cex.lab = 1.2,
             x11 = FALSE)
 
 dev.off()
 
-###
 
+# Write out cluster members
 clusters <- as.data.frame(c[3])
 
 clusters <- clusters %>% rownames_to_column("cds")
 
 write.table(clusters, "results/cluster_members.txt", 
             quote = FALSE, sep = "\t", row.names = FALSE)
-
