@@ -67,17 +67,17 @@ write.table(sigDE.stats, file = "results/sigDE.stats.tbl.txt",
             sep = '\t', quote = F, col.names = NA)
 
 
-data <- table2eset("results/sigDE.stats.tbl.txt")
+data <- table2eset("results/gisigDE.stats.tbl.txt")
 
 data.s <- standardise(data)
 
 (m1 <- mestimate(data.s))
 # [1] 2.004545
 
-pdf("results/dmin.pdf", width = 20, height = 10)
+pdf("results/figures/dmin.pdf", width = 20, height = 10)
 
-tmp <- Dmin(data.s, m = m1, crange = seq(2, 10, 1), repeats = 5, visu = TRUE)
-# [1] 2.2943019 2.3378306 2.0339792 1.0750610 1.1141968 1.0213772 0.9464997 0.8278212 0.7318490
+Dmin(data.s, m = m1, crange = seq(2, 10, 1), repeats = 5, visu = TRUE)
+# [1] 2.2942950 2.3378309 2.0339764 1.1626455 1.1139902 1.0279514 0.8745872 0.7924840 0.6685793
 
 dev.off()
 
@@ -86,7 +86,7 @@ clust <- 5
 
 c <- mfuzz(data.s, c = clust, m = m1)
 
-pdf("results/five-clusters-for-dea.pdf", width = 20, height = 10)
+pdf("results/figures/dea-clusters.pdf", width = 20, height = 10)
 
 mfuzz.plot2(data.s, cl = c, mfrow = c(2, 3), colo = "fancy",
             time.labels = c(2, 24, 48, 96, 192),
@@ -105,9 +105,9 @@ dev.off()
 
 
 # Write out cluster members
-clusters <- as.data.frame(c[3])
+clstr_members <- as.data.frame(c[3])
 
-clusters <- clusters %>% rownames_to_column("cds")
+clstr_members <- clstr_members %>% rownames_to_column("cds")
 
-write.table(clusters, "results/cluster_members.txt", 
+write.table(clstr_members, "results/cluster_members.txt", 
             quote = FALSE, sep = "\t", row.names = FALSE)
