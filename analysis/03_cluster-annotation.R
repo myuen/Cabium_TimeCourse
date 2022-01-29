@@ -1,23 +1,34 @@
 library(dplyr)
 library(stringr)
 
-# Reading and merging the information from different sources.
+### Of interest to us are two main categories:
+### (1) gene involved in MEV/MEP pathway, terpene synthases and P450s.
+### (2) Transcription factors that might be involved in the regulation of
+### expression of genes identified in (1) as well as the development of
+### traumatic resin duct in spruce cambium tissue.
 
+#### Best source for genes involved in (1) comes from PG-29 manual annotation
+#### from C. Keeling. Transcription factors (TF) relied on annotation from
+#### InterProScan
 
-# Read DE statistics
+#===
+
+#### Read DE statistics
 sigDE_stats <- read.delim("results/dea_sigDE_stats.txt",
                           stringsAsFactors = FALSE)
 
 str(sigDE_stats)
 # 'data.frame':	12915 obs. of  4 variables:
 
+
+#### Isolate sequence that are up-regulated
 sigDE_up <- sigDE_stats %>% filter(logFC >= 0)
 
 str(sigDE_up)
 # 'data.frame':	7031 obs. of  4 variables:
 
 
-### Assign sigDE contigs to clusters
+### Assign cluster ID to DE contigs
 clusters <- read.table("results/cluster_members.txt",
                        header = TRUE)
 
@@ -30,90 +41,64 @@ table(clusters$cluster)
 
 sigDE_up <- left_join(sigDE_up, clusters)
 
+# Number of members in respective clusters that are up-regulated
+table(sigDE_up$cluster)
+#    1    2    3    4    5 
+# 1947  314 2310 1906  554 
 
-# Add BLAST results to annotation
 
-# Header for tab-delimited BLAST results
-blast_header <- c("qseqid", "sseqid", "evalue", "bitscore",
-                  "length", "pident", "ppos", "qcovs", 
-                  "qlen", "qstart", "qend", "qframe",
-                  "slen", "sstart", "send", "salltitles")
+#### Add BLAST annotations to result
 
+#### Header for tab-delimited BLAST results
 
 # Read BLAST results from PG29 manual annotation against assembly
-annot2de <- read.delim("data/PG29ManualAnnot.blastpAssembly.txt",
-                       stringsAsFactors = FALSE, sep = "\t",
-                       header = FALSE)
+blastRslt <- 
+  read.delim("data/PG29ManualAnnot.blastpAssembly.txt",
+             stringsAsFactors = FALSE, sep = "\t",
+             header = FALSE)
 
-str(annot2de)
+colnames(blastRslt) <- 
+  c("qseqid", "sseqid", "evalue", "bitscore",
+    "length", "pident", "ppos", "qcovs", 
+    "qlen", "qstart", "qend", "qframe",
+    "slen", "sstart", "send", "salltitles")
+
+str(blastRslt)
 # 'data.frame':	2773 obs. of  16 variables:
 
-colnames(annot2de) <- blast_header
+# Only select query (i.e.contigs) with 95% or more identity and 80% to subject
+# sequence (i.e. manual annotated sequences) length coverage and up-regulated
+sigDE_up_manualAnnot <- blastRslt %>% 
+  filter(sseqid %in% sigDE_up$cds) %>% 
+  filter(pident >= 95 & qcovs >= 80) %>% 
+  select(sseqid, qseqid)
 
-# Only select query with 95% or more identity and 80% sequence length coverage
-annot2de <- annot2de %>% filter(pident >= 95 & qcovs >= 80)
-
-str(annot2de)
-# 'data.frame':	238 obs. of  16 variables:
-
-
-# Read BLAST results from assembly BLAST against PG29 manual annotations
-de2annot <- read.delim("data/sigDE.blastpPG29ManualAnnot.txt", 
-                     stringsAsFactors = FALSE, sep = "\t",
-                     header = FALSE)
-
-colnames(de2annot) <- blast_header
-
-str(de2annot)
-# 'data.frame':	2064 obs. of  16 variables:
+str(sigDE_up_manualAnnot)
+# 'data.frame':	78 obs. of  2 variables:
 
 
-# Find reciprocal best hit from BLAST results
-reciprocalBest <- 
-  inner_join(de2annot, annot2de, by = c("qseqid" = "sseqid", "sseqid" = "qseqid"))
+# Add gene function to manual annotation
+manualAnnotGeneFunc <- 
+  read.delim("data/ManualAnnotationMatrix.txt",
+             stringsAsFactors = FALSE, header = FALSE)
 
-str(reciprocalBest)
-# 'data.frame':	104 obs. of  30 variables:
-
-reciprocalBest <- reciprocalBest %>% 
-  select(qseqid, sseqid)
-
-
-# Function of manual annotated genes
-geneFunc <- read.delim("data/ManualAnnotationMatrix.txt",
-                       stringsAsFactors = FALSE, header = FALSE)
-
-str(geneFunc)
+str(manualAnnotGeneFunc)
 # 'data.frame':	565 obs. of  2 variables:
 
-sigDE_annotated <- 
-  left_join(reciprocalBest, geneFunc, by = c("sseqid" = "V1"))
+sigDE_up_manualAnnot <- 
+  left_join(sigDE_up_manualAnnot, manualAnnotGeneFunc, 
+            by = c("qseqid" = "V1"))
 
-colnames(sigDE_annotated) <- c("cds", "gene", "function")
+colnames(sigDE_up_manualAnnot) <- c("cds", "annot_id", "desc")
 
-str(sigDE_annotated)
-# 'data.frame':	104 obs. of  3 variables:
-
-# write.table(sigDE_annotated, "results/sigDE_manual_annotation.txt",
-            # col.names = TRUE, row.names = FALSE, 
-            # sep = "\t", quote = FALSE)
+sigDE_up_manualAnnot$annot_method <- "manual"
 
 
-
-
-upReg <- left_join(upReg, clusters)
-
-str(upReg)
-# 'data.frame':	7031 obs. of  5 variables:
-
-
+#### Add InterProScan annotation
 ipr <- read.delim("data/sigDE.aa.annotated.tsv.gz", 
                   stringsAsFactors = FALSE,
                   header = FALSE,
                   sep = "\t")
-
-str(ipr)
-# 'data.frame':	56154 obs. of  14 variables:
 
 colnames(ipr) <- 
   c("cds", "MD5", "length", "analysis", 
@@ -124,38 +109,33 @@ colnames(ipr) <-
     "date",
     "ipr_annot", "ipr_annot_desc", "pathways")
 
-
-# Only keep selected columns
-ipr <- ipr %>% 
-  select(cds, length, analysis, 
-         sig_acc, sig_desc,
-         ipr_annot, ipr_annot_desc, pathways)
+str(ipr)
+# 'data.frame':	56154 obs. of  14 variables:
 
 
-clusters.annot <- left_join(upReg, ipr)
+# Subset InterProScan annotation, limit only to up-regulated contigs and only
+# to TFs by keyword 'transcription factor'
+sigDE_up_autoAnnot <- ipr %>% 
+  filter(cds %in% sigDE_up$cds) %>%
+  filter(str_detect(tolower(ipr_annot_desc), "transcription factor")) %>% 
+  select(cds, ipr_annot_desc, sig_desc)
 
-clusters.annot$sig_desc <- str_to_upper(clusters.annot$sig_desc)
+colnames(sigDE_up_autoAnnot) <- c("cds", "annot_id", "desc")
 
-# Count number of transcription factor by cluster
-clusters.annot %>% 
-  filter(str_detect(sig_desc, "TRANSCRIPTION")) %>%
-  group_by(cluster) %>% 
-  select(cds, cluster) %>%
-  unique() %>%
-  count(cluster)
+sigDE_up_autoAnnot$annot_method <- "InterProScan"
 
-#   cluster     n
-#     <int> <int>
-# 1       1    47
-# 2       2    72
-# 3       3    60
-# 4       4    66
-# 5       5    37
+all_annots <- rbind(sigDE_up_manualAnnot, sigDE_up_autoAnnot)
 
-# Write out transcription factor CDS IDs
-tfs <- clusters.annot %>% 
-  filter(str_detect(sig_desc, "TRANSCRIPTION")) %>%
-  select(cds) %>%
-  unique()
+str(all_annots)
+# 'data.frame':	287 obs. of  4 variables:
 
-write(tfs$cds, "results/TF.cdsID.txt")
+sigDE_up_annot <- left_join(sigDE_up, all_annots)
+
+str(sigDE_up_annot)
+# 'data.frame':	7288 obs. of  8 variables:
+
+sigDE_up_annot <- sigDE_up_annot[order(sigDE_up_annot$cluster),]
+
+write.table(sigDE_up_annot, "results/sigDE_up_annotation.txt",
+            quote = FALSE, col.names = TRUE, row.names = FALSE,
+            sep = "\t")
