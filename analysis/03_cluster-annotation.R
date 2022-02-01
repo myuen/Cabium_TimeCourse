@@ -37,7 +37,8 @@ str(clusters)
 
 table(clusters$cluster)
 #    1    2    3    4    5 
-# 1396 1368 1234 1963  999 
+# 1234  998 1368 1396 1964 
+
 
 sigDE_up <- left_join(sigDE_up, clusters)
 
@@ -65,6 +66,7 @@ colnames(blastRslt) <-
 
 str(blastRslt)
 # 'data.frame':	2773 obs. of  16 variables:
+
 
 # Only select query (i.e.contigs) with 95% or more identity and 80% to subject
 # sequence (i.e. manual annotated sequences) length coverage and up-regulated
@@ -128,6 +130,7 @@ all_annots <- rbind(sigDE_up_manualAnnot, sigDE_up_autoAnnot)
 
 str(all_annots)
 # 'data.frame':	287 obs. of  4 variables:
+
 
 sigDE_up_annot <- left_join(sigDE_up, all_annots)
 
