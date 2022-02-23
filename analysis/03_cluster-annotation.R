@@ -139,7 +139,7 @@ nDat <- mDat %>%
 
 map_df(nDat$data, function(n){
   df <- data.frame(
-    ipr_annot = paste(unlist(n["ipr_annot"]), collapse = ";"),
+    ipr_annot = str_c(unlist(n["ipr_annot"]), collapse = ";"),
     sig_desc = paste(unlist(n["sig_desc"]), collapse = ";"))
 })
 
