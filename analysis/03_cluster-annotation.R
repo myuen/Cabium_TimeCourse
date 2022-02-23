@@ -138,8 +138,11 @@ nDat <- mDat %>%
   nest()
 
 map_df(nDat$data, function(n){
+  ipr_annots <- unlist(n["ipr_annot"])
+  ipr_annots <- ipr_annots[ipr_annots != "-"]
+  
   df <- data.frame(
-    ipr_annot = str_c(unlist(n["ipr_annot"]), collapse = ";"),
+    ipr_annots = str_c(ipr_annots, collapse = ";"),
     sig_desc = paste(unlist(n["sig_desc"]), collapse = ";"))
 })
 
