@@ -1,16 +1,14 @@
 library(dplyr)
+library(purrr)
 library(stringr)
+library(tidyr)
 
+### Add annotations to differentially expressed contigs from 3 sources:
 
-### Of interest to us are two main categories:
-### (1) gene involved in MEV/MEP pathway, terpene synthases and P450s.
-### (2) Transcription factors that might be involved in the regulation of
-### expression of genes identified in (1) as well as the development of
-### traumatic resin duct in spruce cambium tissue.
+### (1) Manually curated sequences from C. Keeling from interior Spruce PG-29
+### (2) InterProScan.
+### (3) BLAST RefSeq Plant
 
-#### Best sources for genes involved in (1) comes from PG-29 manual annotation
-#### from C. Keeling. Transcription factors (TF) for (2) relies on annotation
-#### from InterProScan
 
 #===
 
@@ -31,6 +29,7 @@ clusters <- read.table("results/cluster_members.txt",
 str(clusters)
 # 'data.frame':	6960 obs. of  2 variables:
 
+# Number of members in respective clusters
 table(clusters$cluster)
 #    1    2    3    4    5 
 # 1234  998 1368 1396 1964 
@@ -38,13 +37,14 @@ table(clusters$cluster)
 
 sigDE <- left_join(sigDE_stats, clusters)
 
-# Number of members in respective clusters
+# Since we have contigs differentially expressed in multiple comparisons so we
+# have a larger count of members in respective clusters.
 table(sigDE$cluster)
 #    1    2    3    4    5 
 # 2376 1737 2634 2443 3722 
 
 
-#### Add BLAST annotations to result
+#### Process manual curate BLAST annotations
 
 # Read BLAST results from PG29 manual annotation against assembly
 blastRslt <- 
@@ -65,13 +65,13 @@ str(blastRslt)
 
 # Only select query (i.e.contigs) with 95% or more identity and 80% to subject
 # sequence (i.e. manual annotated sequences) length coverage and up-regulated
-sigDE_manualAnnot <- blastRslt %>% 
+sigDE_manual_Annot <- blastRslt %>% 
   filter(sseqid %in% sigDE$cds) %>% 
   filter(pident >= 95 & qcovs >= 80) %>% 
   select(sseqid, qseqid)
 
-str(sigDE_manualAnnot)
-# 'data.frame':	109 obs. of  2 variables:
+str(sigDE_manual_Annot)
+ # 'data.frame':	109 obs. of  2 variables:
 
 
 # Add gene function to manual annotation
@@ -82,24 +82,24 @@ manualAnnotGeneFunc <-
 str(manualAnnotGeneFunc)
 # 'data.frame':	565 obs. of  2 variables:
 
-sigDE_manualAnnot <- 
-  left_join(sigDE_manualAnnot, manualAnnotGeneFunc, 
+sigDE_manual_Annot <- 
+  left_join(sigDE_manual_Annot, manualAnnotGeneFunc, 
             by = c("qseqid" = "V1"))
 
-sigDE_manualAnnot <- sigDE_manualAnnot %>% 
+sigDE_manual_Annot <- sigDE_manual_Annot %>% 
   select(-qseqid) %>% 
   unique()
 
-colnames(sigDE_manualAnnot) <- c("cds", "desc")
+colnames(sigDE_manual_Annot) <- c("cds", "manual annotation")
 
-sigDE_manualAnnot$annot_method <- "manual"
+# sigDE_manual_Annot$annot_method <- "manual"
 
-str(sigDE_manualAnnot)
+str(sigDE_manual_Annot)
 # 'data.frame':	99 obs. of  3 variables:
 
 
 
-#### Add InterProScan annotation
+#### Process tsv InterProScan annotation
 ipr <- read.delim("data/sigDE.aa.annotated.tsv.gz", 
                   stringsAsFactors = FALSE,
                   header = FALSE,
@@ -117,50 +117,77 @@ colnames(ipr) <-
 str(ipr)
 # 'data.frame':	56154 obs. of  14 variables:
 
+# Cast score as a numeric
+ipr$score <- as.numeric(ipr$score)
 
-# Subset InterProScan annotation
-sigDE_IPR_Annot <- ipr %>% 
-  filter(cds %in% sigDE$cds) %>%
-  # filter(str_detect(tolower(ipr_annot_desc), "transcription factor")) %>% 
+
+# Subset InterProScan annotation 
+# Remove NA from coercion.
+# Retain only those with a e-value 1e-20 or below
+ipr <- ipr %>% 
+  filter(!is.na(score)) %>% 
+  filter(score <= 1e-20) %>% 
+  # filter()
   select(cds, ipr_annot, ipr_annot_desc, sig_desc)
 
-colnames(sigDE_IPR_Annot) <- c("cds", "annot_id", "desc")
 
-#### WORK IN PROGRESS ### 
-# There are multiple hits from InterProScan for 1 contigs.
-# Append all results in a single line.
+# Number of counts of contigs with InterProScan annotations
+length(sigDE_IPR_Annot$cds)
+# [1] 56154
 
-mDat <- sigDE_IPR_Annot %>% 
-  filter(cds == "TRINITY_DN70060_c0_g1_i1.p1")
+# Number of counts of unique contigs with InterProScan annotations.  What is
+# shown is there are a lot of contigs with multiple InterProScan match.
+length(unique(sigDE_IPR_Annot$cds))
+# [1] 6537
 
-nDat <- mDat %>%
+
+# Compress multi-line match
+sigDE_IPR_Annot <- sigDE_IPR_Annot %>%
   group_by(cds) %>% 
   nest()
 
-map_df(nDat$data, function(n){
-  ipr_annots <- unlist(n["ipr_annot"])
-  ipr_annots <- ipr_annots[ipr_annots != "-"]
+sigDE_IPR_Annot$data <- 
+  map_df(sigDE_IPR_Annot$data, function(n){
+
+  annot_ids <- unlist(n["annot_id"])
+  annot_ids <- annot_ids[annot_ids != "-"]
+
+  ipr_annot_descs <- unlist(n["ipr_annot_desc"])
+  ipr_annot_descs <- ipr_annot_descs[ipr_annot_descs != "-"]
+  
+  sig_descs <- unlist(n["sig_desc"])
+  sig_descs <- sig_descs[sig_descs != "-"]
+
   
   df <- data.frame(
-    ipr_annots = str_c(ipr_annots, collapse = ";"),
-    sig_desc = paste(unlist(n["sig_desc"]), collapse = ";"))
+    annot_ids = str_c(annot_ids, collapse = ";"),
+    ipr_annot_descs = str_c(ipr_annot_descs, collapse = ";"),
+    sig_descs = str_c(sig_descs, collapse = ";"))
 })
 
-
-###
+sigDE_IPR_Annot <- sigDE_IPR_Annot %>% unnest(cols = c(data))
 
 sigDE_IPR_Annot$annot_method <- "InterProScan"
 
-all_annots <- rbind(sigDE_manualAnnot, sigDE_IPR_Annot)
+###
 
-str(all_annots)
+
+# all_annots <- rbind(sigDE_manual_Annot, sigDE_IPR_Annot)
+
+# str(all_annots)
 # 'data.frame':	441 obs. of  4 variables:
 
 
-sigDE_annot <- left_join(sigDE, all_annots)
+# Add manual annotation to DE contigs
+sigDE_annot <- left_join(sigDE, sigDE_manual_Annot)
+# Joining, by = "cds"
 
 str(sigDE_annot)
-# 'data.frame':	13271 obs. of  8 variables:
+# 'data.frame':	12956 obs. of  7 variables:
+
+
+# For contigs without manual annotation, we will add InterProScan functional
+# annotation
 
 sigDE_annot <- sigDE_annot[order(sigDE_annot$cluster),]
 
