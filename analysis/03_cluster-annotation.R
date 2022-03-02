@@ -1,5 +1,6 @@
 library(dplyr)
 library(purrr)
+library(readr)
 library(stringr)
 library(tidyr)
 
@@ -200,6 +201,5 @@ str(sigDE_Annot)
 # 'data.frame':	13676 obs. of  12 variables:
 
 
-write.table(sigDE_Annot, "results/sigDE_annotations.txt",
-            quote = FALSE, col.names = TRUE, row.names = FALSE,
-            sep = "\t")
+write_delim(sigDE_Annot, "results/sigDE_annotations.txt.gz",
+            delim = "\t", na = "")
