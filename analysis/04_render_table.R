@@ -131,5 +131,39 @@ tbl_groupby_clone <- annots %>%
     columns = "CDS")
   
 
-
 gtsave(tbl_groupby_clone, "results/annotaion.group_by_clone.html")
+
+###
+
+tbl_groupby_tf <- annots %>% 
+  filter(str_detect(`IPR Signature Desc`, "TRANSCRIPTION FACTOR")) %>% 
+  gt() %>% 
+  
+  # Header
+  tab_header(title = md("**Annotations for All Differentially Expressed Contigs**")) %>%
+  # Footer
+  tab_source_note(source_note = md("**InterProScan and BLAST threshold at 1e-20**")) %>%
+  
+  tab_spanner(
+    label = md("**Differential Expression Stats**"),
+    columns = c("log2FC", "Adj. p-value", "Contrast")) %>%
+  
+  tab_spanner(
+    label = md("**InterProScan**"),
+    columns = c("IPR Sigature Acc", "IPR Signature Desc",
+                "IPR Annot", "IPR Annot Desc")) %>%
+  
+  tab_spanner(
+    label = md("**BLAST RefSeq Plant**"),
+    columns = c("BLAST Top Hit", "BLAST Desc")) %>% 
+  
+  cols_align(
+    align = "center",
+    columns = everything()) %>% 
+  
+  cols_align(
+    align = "right",
+    columns = "CDS")
+
+
+gtsave(tbl_groupby_tf, "results/annotaion.group_by_tf.html")
