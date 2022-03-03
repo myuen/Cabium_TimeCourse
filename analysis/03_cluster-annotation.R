@@ -132,27 +132,37 @@ length(unique(IPR_Filtered$cds))
 
 # Compress multi-line match
 IPR_Filtered <- IPR_Filtered %>%
-  group_by(cds) %>% 
+  group_by(cds) %>%
   nest()
 
-IPR_Filtered$data <- 
+
+IPR_Filtered$data <-
   map_df(IPR_Filtered$data, function(n){
     
     sig_accs <- unlist(n["sig_acc"])
+    sig_accs <- sig_accs %>% 
+      str_to_upper() %>% 
+      unique()
     
     # Remove cells with no info
     sig_descs <- unlist(n["sig_desc"])
-    sig_descs <- sig_descs[sig_descs != "-"]
+    sig_descs <- sig_descs[sig_descs != "-"] %>% 
+      str_to_upper() %>% 
+      unique()
   
     ipr_annots <- unlist(n["ipr_annot"])
-    ipr_annots <- ipr_annots[ipr_annots != "-"]
+    ipr_annots <- ipr_annots[ipr_annots != "-"] %>% 
+      str_to_upper() %>% 
+      unique()
 
     ipr_annot_descs <- unlist(n["ipr_annot_desc"])
-    ipr_annot_descs <- ipr_annot_descs[ipr_annot_descs != "-"]
+    ipr_annot_descs <- ipr_annot_descs[ipr_annot_descs != "-"] %>% 
+      str_to_upper() %>% 
+      unique()
     
     # Collapse multi-line annotation into single line
     df <- data.frame(
-      sig_accs <- str_c(sig_accs, collapse = ";"),
+      sig_accs <-str_c(sig_accs, collapse = ";"),
       
       sig_descs <- str_c(sig_descs, collapse = ";"),
       
