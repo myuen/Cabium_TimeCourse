@@ -43,7 +43,7 @@ str(annots)
 # spec_tbl_df [13,678 × 13] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
 
 
-### Use GT library
+### Table group by contigs
 tbl_groupby_ctg <- annots %>%
   group_by(CDS) %>% 
   gt() %>% 
@@ -52,7 +52,8 @@ tbl_groupby_ctg <- annots %>%
   tab_header(title = md("**Annotations for All Differentially Expressed Contigs**")) %>%
   # Footer
   tab_source_note(source_note = md("**InterProScan and BLAST threshold at 1e-20**")) %>% 
-  
+
+  # Setting up subtitles  
   tab_spanner(
     label = md("**Differential Expression Stats**"),
     columns = c("log2FC", "Adj. p-value", "Contrast")) %>% 
@@ -64,8 +65,15 @@ tbl_groupby_ctg <- annots %>%
 
   tab_spanner(
     label = md("**BLAST RefSeq Plant**"),
-    columns = c("BLAST Top Hit", "BLAST Desc"))
+    columns = c("BLAST Top Hit", "BLAST Desc")) %>% 
 
+  cols_align(
+    align = "center",
+    columns = everything()) %>% 
+  
+  cols_align(
+    align = "right",
+    columns = "CDS")
 
 gtsave(tbl_groupby_ctg, "results/annotaion.group_by_ctg.html")
 
@@ -91,12 +99,20 @@ tbl_groupby_cluster <- annots %>%
 
   tab_spanner(
     label = md("**BLAST RefSeq Plant**"),
-    columns = c("BLAST Top Hit", "BLAST Desc"))
-
+    columns = c("BLAST Top Hit", "BLAST Desc")) %>% 
+  
+  cols_align(
+    align = "center",
+    columns = everything()) %>% 
+  
+  cols_align(
+    align = "right",
+    columns = "CDS")
 
 gtsave(tbl_groupby_cluster, "results/annotaion.group_by_ctg.html")
 
-#####
+
+### Group by Clone ID
 
 tbl_groupby_clone <- annots %>%
   filter(`Clone ID` != "") %>% 
@@ -107,7 +123,8 @@ tbl_groupby_clone <- annots %>%
   # Header
   tab_header(title = md("**Annotations for All Differentially Expressed Contigs**")) %>%
   # Footer
-  tab_source_note(source_note = md("**InterProScan and BLAST threshold at 1e-20**")) %>%
+  tab_source_note(source_note = md("**InterProScan cutoff  at 1e-20**")) %>%
+  tab_source_note(source_note = md("**BLAST threshold at 1e-20**")) %>%
   
   tab_spanner(
     label = md("**Differential Expression Stats**"),
@@ -130,17 +147,18 @@ tbl_groupby_clone <- annots %>%
     align = "right",
     columns = "CDS")
   
-
+# tbl_groupby_clone
 gtsave(tbl_groupby_clone, "results/annotaion.group_by_clone.html")
 
-###
+
+### Group by transcription factors
 
 tbl_groupby_tf <- annots %>% 
   filter(str_detect(`IPR Signature Desc`, "TRANSCRIPTION FACTOR")) %>% 
   gt() %>% 
   
   # Header
-  tab_header(title = md("**Annotations for All Differentially Expressed Contigs**")) %>%
+  tab_header(title = md("**Annotations for All Differentially Expressed Putative Transcript Factors**")) %>%
   # Footer
   tab_source_note(source_note = md("**InterProScan and BLAST threshold at 1e-20**")) %>%
   
@@ -165,5 +183,49 @@ tbl_groupby_tf <- annots %>%
     align = "right",
     columns = "CDS")
 
-
 gtsave(tbl_groupby_tf, "results/annotaion.group_by_tf.html")
+
+
+### Group by manual annotation
+
+tbl_groupby_ma <- annots[order(annots$log2FC, decreasing = TRUE),] %>% 
+  filter(!is.na(`Manual Annot`)) %>% 
+  group_by(`Manual Annot`) %>%
+  gt(rowname_col = "CDS") %>%
+  
+  # Header
+  tab_header(title = md("**Annotations for All Differentially Expressed Contigs**")) %>%
+  # Footer
+  tab_source_note(source_note = md("**InterProScan e-value threshold at 1e-20**")) %>%
+  tab_source_note(source_note = md("**BLAST e-valuethreshold at 1e-20**")) %>%
+  
+  tab_spanner(
+    label = md("**Differential Expression Stats**"),
+    columns = c("log2FC", "Adj. p-value", "Contrast")) %>%
+  
+  tab_spanner(
+    label = md("**InterProScan**"),
+    columns = c("IPR Sigature Acc", "IPR Signature Desc",
+                "IPR Annot", "IPR Annot Desc")) %>%
+  
+  tab_spanner(
+    label = md("**BLAST RefSeq Plant**"),
+    columns = c("BLAST Top Hit", "BLAST Desc")) %>% 
+  
+  cols_align(
+    align = "right",
+    columns = "CDS") %>% 
+  
+  cols_align(
+    !starts_with("CDS"),
+    align = "center",
+    columns = everything()) %>% 
+  
+  cols_width(
+    CDS ~ px(300),
+    everything() ~ px(150)
+  )
+
+
+gtsave(tbl_groupby_ma, "results/annotaion.group_by_ma.html")
+
