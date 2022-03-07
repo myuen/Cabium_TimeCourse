@@ -23,7 +23,6 @@ str(sigDE_stats)
 # 'data.frame':	12915 obs. of  4 variables:
 
 
-
 ### Assign cluster ID to DE contigs
 clusters <- read.table("results/cluster_members.txt",
                        header = TRUE)
@@ -36,14 +35,16 @@ table(clusters$cluster)
 #    1    2    3    4    5 
 # 1234  998 1368 1396 1964 
 
+clusters$cluster <- str_c("cluster", clusters$cluster)
+
 
 sigDE_stats <- left_join(sigDE_stats, clusters, by = "cds")
 
 # Since we have contigs differentially expressed in multiple comparisons so we
 # have a larger count of members in respective clusters.
 table(sigDE_stats$cluster)
-#    1    2    3    4    5 
-# 2376 1737 2634 2443 3722 
+# cluster1 cluster2 cluster3 cluster4 cluster5 
+#     2376     1737     2634     2443     3722 
 
 
 ### 0. Add clone ID that matches contigs
@@ -178,7 +179,6 @@ colnames(IPR_Filtered) <- c("cds", "ipr_sig_accs", "ipr_sig_descs",
 
 str(IPR_Filtered)
 # grouped_df [5,574 × 5] (S3: grouped_df/tbl_df/tbl/data.frame)
-
 
 
 #### 3. Process BLAST tsv annotations
