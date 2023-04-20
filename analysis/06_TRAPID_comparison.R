@@ -262,32 +262,34 @@ x_max <- round(x_max, digits = -1)
 
 
 (g <- ggplot(plot.data.long, aes(y=tf, x=count)) + 
-  geom_col(width=0.5, aes(fill= factor(type))) +
+    geom_col(width=0.5, aes(fill= factor(type))) +
 
-  # Add label
-  geom_text(aes(label = count), 
-            colour = 'white',
-            family = 'helvetica',
-            fontface = 'bold',
-            position = position_stack(vjust=0.5)) +
-  
-  # Plot title and axis label
-  labs(title = "Number of transcripton factors and terpene synthase expressed") +
-  xlab("Count") + 
-  ylab("") +
-  
-  # Add tick mark on x-axis
-  scale_x_continuous(breaks=seq(0, x_max, 10)) +
+    # Add label
+    geom_text(aes(label = count), 
+              colour = 'white',
+              family = 'helvetica',
+              fontface = 'bold',
+              position = position_stack(vjust=0.5)) +
+    
+    # Plot title and axis label
+    labs(title = "Number of transcripton factors and terpene synthase expressed") +
+    xlab("Count") + 
+    ylab("") +
+    
+    # Add tick mark on x-axis
+    scale_x_continuous(breaks=seq(0, x_max, 10)) +
+    scale_y_discrete(limits=c("HOUSE KEEPING", "TPS", "NACS", "MADS", "HSFS", "BZIP")) +
 
-  # Manual edit colors
-  scale_fill_manual(breaks=c('crd', 'common', 'trd'), 
-                    labels = c('crd' = 'CRD-only', 
-                               'common' = 'Both', 
-                               'trd' = 'TRD-only'),
-                    values = c('#748d9a', '#CE9916', '#AD000B')) +
+
+    # Manual edit colors
+    scale_fill_manual(breaks=c('crd', 'common', 'trd'), 
+                      labels = c('crd' = 'CRD-only', 
+                                 'common' = 'Both', 
+                                 'trd' = 'TRD-only'),
+                      values = c('#748d9a', '#CE9916', '#AD000B')) +
+    
+    theme_minimal() +
   
-  theme_minimal() +
-  
-  # Remove legend title
-  theme(legend.title = element_blank())
+    # Remove legend title
+    theme(legend.title = element_blank())
 )
