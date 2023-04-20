@@ -245,12 +245,13 @@ plot.data.long <-
 
 plot.data.long$tf <- toupper(plot.data.long$tf)
 
-# plot.data.long$tf <-
-#   factor(plot.data.long$tf, levels = c('bzip', 'hsfs', 'mads', 'nacs', 'tps'))
+# Replace zero counts to NA for text label in plot
+plot.data.long$count <- na_if(plot.data.long$count, 0)
 
 plot.data.long$type <-
   factor(plot.data.long$type, levels=c('trd', 'common', 'crd'))
 
+# Set the max for x-axis
 x_max <- plot.data.long |> 
   group_by(tf) |> 
   summarise(sum=sum(count)) |> 
@@ -259,17 +260,26 @@ x_max <- plot.data.long |>
 
 x_max <- round(x_max, digits = -1)
 
-ggplot(plot.data.long, aes(y=tf, x=count)) + 
+
+(g <- ggplot(plot.data.long, aes(y=tf, x=count)) + 
   geom_col(width=0.5, aes(fill= factor(type))) +
+
+  # Add label
+  geom_text(aes(label = count), 
+            colour = 'white',
+            family = 'helvetica',
+            fontface = 'bold',
+            position = position_stack(vjust=0.5)) +
   
   # Plot title and axis label
-  labs("Number of transcripton factors and terpene synthase expressed") +
-
+  labs(title = "Number of transcripton factors and terpene synthase expressed") +
   xlab("Count") + 
   ylab("") +
   
-  scale_x_continuous(breaks=seq(0, x_max, 5)) +
+  # Add tick mark on x-axis
+  scale_x_continuous(breaks=seq(0, x_max, 10)) +
 
+  # Manual edit colors
   scale_fill_manual(breaks=c('crd', 'common', 'trd'), 
                     labels = c('crd' = 'CRD-only', 
                                'common' = 'Both', 
@@ -278,6 +288,6 @@ ggplot(plot.data.long, aes(y=tf, x=count)) +
   
   theme_minimal() +
   
+  # Remove legend title
   theme(legend.title = element_blank())
-
-
+)
