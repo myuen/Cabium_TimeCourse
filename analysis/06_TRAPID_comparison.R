@@ -254,7 +254,7 @@ plot.data.long$type <-
 # Set the max for x-axis
 x_max <- plot.data.long |> 
   group_by(tf) |> 
-  summarise(sum=sum(count)) |> 
+  summarise(sum=sum(count, na.rm = TRUE)) |> 
   select(sum) |> 
   max()
 
