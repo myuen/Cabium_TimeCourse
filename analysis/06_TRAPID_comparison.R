@@ -267,12 +267,11 @@ x_max <- round(x_max, digits = -1)
     # Add label
     geom_text(aes(label = count), 
               colour = 'white',
-              family = 'helvetica',
               fontface = 'bold',
               position = position_stack(vjust=0.5)) +
     
     # Plot title and axis label
-    labs(title = "Number of transcripton factors and terpene synthase expressed") +
+    labs(title = "Number of Transcripton Factors and Terpene Synthase expressed") +
     xlab("Count") + 
     ylab("") +
     
@@ -291,5 +290,12 @@ x_max <- round(x_max, digits = -1)
     theme_minimal() +
   
     # Remove legend title
-    theme(legend.title = element_blank())
+    theme(legend.title = element_blank(),
+          axis.text = element_text(face = 'bold', size = 12),
+          legend.text = element_text(face = 'bold', size = 11),
+          plot.background = element_rect(colour = 'white'),
+          title = element_text(face = 'bold', size = 11))
 )
+
+ggsave("results/figures/TRAPID_comparison.jpeg", g, dpi = 300)
+ggsave("results/figures/TRAPID_comparison.svg", g)
